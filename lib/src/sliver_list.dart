@@ -1066,7 +1066,13 @@ class AnimatedRenderSliverList extends AnimatedRenderSliverMultiBoxAdaptor {
       _MovingPopUpList? popUpList) {
     assert(!intervalManager.hasPendingUpdates);
     assert(buildIndex >= 0 && buildIndex <= childCount);
-    final list = listOf(popUpList)!;
+    final list = listOf(popUpList);
+    if (list == null || list.firstChild == null) {
+      if (popUpList != null) return _Measure.zero;
+      final extent = geometry?.scrollExtent ?? 0.0;
+      return _Measure(
+          childCount == 0 ? 0.0 : extent * buildIndex / childCount, true);
+    }
 
     late int firstBuildIndex, lastBuildIndex /* exclueded */;
     late double size, scrollOffset;
