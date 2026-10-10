@@ -1,5 +1,10 @@
 # great_list_view
 
+Autoil fork: large-list diffs use Flutter `compute`, with cancellable result
+delivery. A superseded calculation may finish in its isolate, but its result
+is discarded. No worker-pool initialization is needed. Comparators passed to
+background diffs must be top-level or static functions with sendable data.
+
 ## Overview
 
 A Flutter package that includes a powerful, animated and reorderable list view. Just notify the list view of changes in your underlying list and the list view will automatically animate. You can also change the entire list and automatically dispatch the differences detected by the Myers alghoritm. 
@@ -89,7 +94,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -227,7 +231,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -388,7 +391,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -537,7 +539,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -687,7 +688,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -852,7 +852,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -997,7 +996,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -1155,7 +1153,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -1342,7 +1339,6 @@ import 'package:great_list_view/other_widgets.dart';
 
 void main() {
   buildTree(rnd, root, 5, 3);
-  Executor().warmUp();
   runApp(App());
 }
 
@@ -1603,7 +1599,6 @@ import 'package:flutter/rendering.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 

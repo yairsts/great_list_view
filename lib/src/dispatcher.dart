@@ -2,11 +2,12 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
 
+import 'package:async/async.dart';
 import 'package:diffutil_dart/diffutil.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:great_list_view/great_list_view.dart'
     show AnimatedListController, AnimatedWidgetBuilderData;
-import 'package:worker_manager/worker_manager.dart';
 
 part 'package:great_list_view/src/moved_array.dart';
 
@@ -89,22 +90,28 @@ class AnimatedListDiffDispatcher<T> {
 
   T _currentList;
   T? _oldList, _processingList;
-  Cancelable<_DiffResultDispatcher>? _cancelable;
+  CancelableOperation<_DiffResultDispatcher>? _cancelable;
 
   /// It replaces the current list with the new one.
   /// Differences are calculated and then dispatched to the [controller].
   Future<void> dispatchNewList(T newList, {bool detectMoves = false}) async {
     _processingList = newList;
 
-    _DiffResultDispatcher dr;
-    var futureOr = _computeDiffs(_currentList, newList, detectMoves);
-    if (futureOr is Future<_DiffResultDispatcher?>) {
-      dr = await futureOr;
-    } else {
-      dr = futureOr;
+    _DiffResultDispatcher? result;
+    try {
+      final futureOr = _computeDiffs(_currentList, newList, detectMoves);
+      if (futureOr is Future<_DiffResultDispatcher?>) {
+        result = await futureOr;
+      } else {
+        result = futureOr;
+      }
+    } catch (_) {
+      if (newList == _processingList) _processingList = null;
+      rethrow;
     }
 
-    if (newList != _processingList || _processingList == null) {
+    final dr = result;
+    if (dr == null || newList != _processingList || _processingList == null) {
       return; // discard result
     }
 
@@ -180,28 +187,20 @@ class AnimatedListDiffDispatcher<T> {
   /// Meyes algorithm is not yet running.
   T get currentList => _currentList;
 
-  FutureOr<_DiffResultDispatcher> _computeDiffs(
+  FutureOr<_DiffResultDispatcher?> _computeDiffs(
       final T oldList, final T newList, bool detectMoves) {
-    if (_cancelable != null) {
-      _cancelable!.cancel();
-      _cancelable = null;
-    }
+    _cancelable?.cancel();
+    _cancelable = null;
 
     if (comparator.lengthOf(oldList) + comparator.lengthOf(newList) >=
         spawnNewInsolateCount) {
-      final completer = Completer<_DiffResultDispatcher>();
-      _cancelable = Executor().execute<T, T, AnimatedListDiffBaseComparator<T>,
-              bool, _DiffResultDispatcher, dynamic>(
-          arg1: oldList,
-          arg2: newList,
-          arg3: comparator,
-          arg4: detectMoves,
-          fun4: _calculateDiff)
-        ..then((value) {
-          _cancelable = null;
-          completer.complete(value);
-        }).catchError((dynamic e) {});
-      return completer.future;
+      final input = _DiffInput(oldList, newList, comparator, detectMoves);
+      final task = CancelableOperation.fromFuture(
+          compute(_calculateDiffInBackground<T>, input));
+      _cancelable = task;
+      return task.valueOrCancellation().whenComplete(() {
+        if (identical(_cancelable, task)) _cancelable = null;
+      });
     } else {
       return _calculateDiff(oldList, newList, comparator, detectMoves);
     }
@@ -212,13 +211,29 @@ class AnimatedListDiffDispatcher<T> {
   T? discard() {
     final list = _processingList;
     _processingList = null;
+    _cancelable?.cancel();
+    _cancelable = null;
     return list;
   }
 }
 
+class _DiffInput<T> {
+  const _DiffInput(
+      this.oldList, this.newList, this.comparator, this.detectMoves);
+
+  final T oldList;
+  final T newList;
+  final AnimatedListDiffBaseComparator<T> comparator;
+  final bool detectMoves;
+}
+
+// Pass only diff data to the isolate, never the dispatcher or its UI controller.
+_DiffResultDispatcher _calculateDiffInBackground<T>(_DiffInput<T> input) =>
+    _calculateDiff(
+        input.oldList, input.newList, input.comparator, input.detectMoves);
+
 _DiffResultDispatcher _calculateDiff<T>(T oldList, T newList,
-    AnimatedListDiffBaseComparator<T> comparator, bool detectMoves,
-    [TypeSendPort<dynamic>? port]) {
+    AnimatedListDiffBaseComparator<T> comparator, bool detectMoves) {
   return _DiffResultDispatcher(calculateDiff<T>(
     _DiffDelegate<T>(
       oldList,

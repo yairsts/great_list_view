@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:great_list_view/great_list_view.dart';
 
 void main() {
-  Executor().warmUp();
   runApp(App());
 }
 
