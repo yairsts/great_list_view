@@ -603,6 +603,22 @@ class AnimatedRenderSliverList extends AnimatedRenderSliverMultiBoxAdaptor {
     init();
   }
 
+  Completer<void>? _pendingFirstLayout;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    _pendingFirstLayout?.complete();
+    _pendingFirstLayout = null;
+  }
+
+  @override
+  void dispose() {
+    _pendingFirstLayout?.complete();
+    _pendingFirstLayout = null;
+    super.dispose();
+  }
+
   @override
   void _performLayout(_PopUpList? popUpList) {
     final constraints = this.constraints;
@@ -987,6 +1003,12 @@ class AnimatedRenderSliverList extends AnimatedRenderSliverMultiBoxAdaptor {
       double startingSize,
       int startingCount) async {
     assert(count > 0);
+    if (!attached || (cancelled?.value ?? false)) return _Measure.zero;
+    // A list can receive updates while mounted but before its first layout.
+    if (geometry == null) {
+      await (_pendingFirstLayout ??= Completer<void>()).future;
+      if (!attached || (cancelled?.value ?? false)) return _Measure.zero;
+    }
     final maxSize = constraints.remainingCacheExtent;
     assert(maxSize >= 0.0);
     var size = startingSize;
